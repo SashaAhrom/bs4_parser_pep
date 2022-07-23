@@ -2,13 +2,14 @@ import logging
 
 from requests import RequestException
 
+from constants import FORMAT_CODE
 from exceptions import ParserFindTagException
 
 
 def get_response(session, url):
     try:
         response = session.get(url)
-        response.encoding = 'utf-8'
+        response.encoding = FORMAT_CODE
         return response
     except RequestException:
         logging.exception(

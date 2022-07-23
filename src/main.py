@@ -7,30 +7,43 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PEP_URL
+from constants import (BASE_DIR, BOTTOM_NAME, DOWNLOAD, EXPECTED_STATUS,
+                       MAIN_DOC_URL, PATERN_VERSIONS_STATUS, PEP_URL, TAG_A,
+                       TAG_DD, TAG_DIV, TAG_DL, TAG_H1, TAG_LI, TAG_SECTION,
+                       TAG_TABLE, TAG_TD, TAG_TR, TAG_UL,
+                       TITLE_LATEST_VERSIONS, TITLE_PEP, TITLE_WHATSNEW,
+                       WHATSNEW)
 from outputs import control_output, wrong_status
 from utils import find_tag, get_response
 
 
 def whats_new(session):
-    whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
+    whats_new_url = urljoin(MAIN_DOC_URL, WHATSNEW)
     response = get_response(session, whats_new_url)
     soup = BeautifulSoup(response.text, features='lxml')
-    main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
-    div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
+    main_div = find_tag(
+        soup,
+        TAG_SECTION,
+        attrs={'id': 'what-s-new-in-python'}
+    )
+    div_with_ul = find_tag(
+        main_div,
+        TAG_DIV,
+        attrs={'class': 'toctree-wrapper'}
+    )
     sections_by_python = div_with_ul.find_all(
-        'li',
+        TAG_LI,
         attrs={'class': 'toctree-l1'}
     )
-    results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
+    results = [TITLE_WHATSNEW]
     for section in tqdm(sections_by_python, desc='whats new'):
-        version_a_tag = find_tag(section, 'a')
+        version_a_tag = find_tag(section, TAG_A)
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
         response = get_response(session, version_link)
         soup = BeautifulSoup(response.text, features='lxml')
-        h1 = find_tag(soup, 'h1')
-        dl = find_tag(soup, 'dl')
+        h1 = find_tag(soup, TAG_H1)
+        dl = find_tag(soup, TAG_DL)
         dl_text = dl.text.replace('\n', ' ')
         results.append((version_link, h1.text, dl_text))
     return results
@@ -39,19 +52,18 @@ def whats_new(session):
 def latest_versions(session):
     response = get_response(session, MAIN_DOC_URL)
     soup = BeautifulSoup(response.text, features='lxml')
-    sidebar = find_tag(soup, 'div', attrs={'class': 'sphinxsidebarwrapper'})
-    ul_tags = sidebar.find_all('ul')
+    sidebar = find_tag(soup, TAG_DIV, attrs={'class': 'sphinxsidebarwrapper'})
+    ul_tags = sidebar.find_all(TAG_UL)
     for ul in tqdm(ul_tags, desc='All versions'):
         if 'All versions' in ul.text:
-            a_tags = ul.find_all('a')
+            a_tags = ul.find_all(TAG_A)
             break
     else:
         raise Exception('Ничего не нашлось')
-    results = [('Ссылка на документацию', 'Версия', 'Статус')]
-    pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
+    results = [TITLE_LATEST_VERSIONS]
     for a_tag in tqdm(a_tags, desc='finally way'):
         link = a_tag['href']
-        text_match = re.search(pattern, a_tag.text)
+        text_match = re.search(PATERN_VERSIONS_STATUS, a_tag.text)
         if text_match is not None:
             version, status = text_match.groups()
         else:
@@ -63,13 +75,13 @@ def latest_versions(session):
 
 
 def download(session):
-    downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
+    downloads_url = urljoin(MAIN_DOC_URL, DOWNLOAD)
     response = get_response(session, downloads_url)
     soup = BeautifulSoup(response.text, features='lxml')
-    table_tag = find_tag(soup, 'table', {'class': 'docutils'})
+    table_tag = find_tag(soup, TAG_TABLE, {'class': 'docutils'})
     pdf_a4_tag = find_tag(
         table_tag,
-        'a',
+        TAG_A,
         {'href': re.compile(r'.+pdf-a4\.zip$')}
     )
     pdf_a4_link = pdf_a4_tag['href']
@@ -87,14 +99,14 @@ def download(session):
 def pep(session):
     response = get_response(session, PEP_URL)
     soup = BeautifulSoup(response.text, features='lxml')
-    section = find_tag(soup, 'section', attrs={'id': 'pep-content'})
-    rows = section.find_all('tr',
+    section = find_tag(soup, TAG_SECTION, attrs={'id': 'pep-content'})
+    rows = section.find_all(TAG_TR,
                             attrs={'class': re.compile(r'row-(even|odd)')})
     main_page = {}
     for row in tqdm(rows, desc='main page pep'):
-        td_one_line = row.find_all('td')
+        td_one_line = row.find_all(TAG_TD)
         if len(td_one_line) == 4 and td_one_line[1].text != '':
-            td_href = find_tag(td_one_line[1], 'a')
+            td_href = find_tag(td_one_line[1], TAG_A)
             href = td_href['href']
             if href not in main_page:
                 if len(td_one_line[0].text) == 2:
@@ -111,24 +123,24 @@ def pep(session):
         soup = BeautifulSoup(response.text, features='lxml')
         title = find_tag(
             soup,
-            'dl',
+            TAG_DL,
             attrs={'class': 'rfc2822 field-list simple'}
         )
         page_status = find_tag(
             title,
-            string='Status').find_next('dd').text
-        if page_status not in EXPECTED_STATUS[status]:
+            string='Status').find_next(TAG_DD).text
+        if page_status not in EXPECTED_STATUS.get(status):
             wrong_pep.append((pep_link, page_status, EXPECTED_STATUS[status]))
         if page_status in count_pep:
             count_pep[page_status] += 1
         else:
             count_pep[page_status] = 1
-    results = [('Статус', 'Количество')]
+    results = [TITLE_PEP]
     all_sum = 0
     for status, count in count_pep.items():
         results.append((status, count))
         all_sum += count
-    results.append(('Total', all_sum))
+    results.append((BOTTOM_NAME, all_sum))
     wrong_status(wrong_pep)
     return results
 
