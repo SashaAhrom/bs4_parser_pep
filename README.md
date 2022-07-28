@@ -1,14 +1,14 @@
-# Проект парсинга pep
-### Описание
+# bs4_parser_pep(educational project)
+## Description
 ```
-Проект парсит данные с ресурса 'https://peps.python.org/'.
+The project parses data from the resource 'https://peps.python.org/'. and cache them.
+Data can be output to logs in the form of a table or in the format .csv
 ```
-### Запуск программы
+## Running a project in dev mode
 ```
-- В дериктории проекта перейдите в каталог src.
-- Для получения информации о программе введите в консоль python main.py -h
-```
-```
+- In the project directory, change to the src directory.
+- For information about the program, enter python main.py -h into the console
+
 main.py [-h] [-c] [-p] [-o {pretty,file}] {whats-new,latest-versions,download,pep}
 
 Парсер документации Python
@@ -23,4 +23,8 @@ optional arguments:
   -p, --pretty          Вывод в формате PrettyTable
   -o {pretty,file}, --output {pretty,file}
                         Дополнительные способы вывода данных
+```
+## System requirements
+```
+Python 3.7
 ```
